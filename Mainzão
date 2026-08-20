@@ -1,0 +1,25 @@
+void main(){
+    CAIXAO_BANCAO contaBancaria = new CAIXAO_BANCAO();
+
+    contaBancaria.setTitular("Pablo");
+    contaBancaria.setLimite(1000);
+    System.out.println("Titular: " + contaBancaria.getTitular());
+    System.out.println("Saldo inicial: R$ " + contaBancaria.getSaldo());
+    System.out.println("Limite: R$ " + contaBancaria.getLimite());
+
+    System.out.println("\n--- Depósito ---");
+    contaBancaria.depositar(1000);
+    System.out.println("Saldo após depósito: R$ " + contaBancaria.getSaldo());
+
+    System.out.println("\n--- Saque dentro do saldo ---");
+    contaBancaria.sacar(300);
+    System.out.println("Saldo após saque: R$ " + contaBancaria.getSaldo());
+
+    System.out.println("\n--- Saque utilizando o limite ---");
+    contaBancaria.sacar(500);
+    System.out.println("Saldo após saque: R$ " + contaBancaria.getSaldo());
+
+    System.out.println("\n--- Tentativa de saque acima do limite ---");
+    contaBancaria.sacar(1000);
+    System.out.println("Saldo final: R$ " + contaBancaria.getSaldo());
+}
