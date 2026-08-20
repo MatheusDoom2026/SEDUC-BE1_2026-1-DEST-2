@@ -1,0 +1,45 @@
+public class CAIXAO_BANCAO {
+    private String titular;
+    private double saldo;
+    private double limite;
+
+
+
+    public String getTitular() {
+        return titular;
+    }
+
+
+
+    public double getSaldo() {
+        return saldo=0;
+    }
+
+
+    public double getLimite() {
+        return limite;
+    }
+    public CAIXAO_BANCAO() {
+    }
+
+    @Override
+    public String toString() {
+        return "ContaBancaria{" +
+                "titular='" + titular + '\'' +
+                ", saldo=" + saldo +
+                ", limite=" + limite +
+                '}';
+    }
+
+    public void setTitular(String pablo) {
+    }
+
+    public void setLimite(int i) {
+    }
+
+    public void depositar(int i) {
+    }
+
+    public void sacar(int i) {
+    }
+}
