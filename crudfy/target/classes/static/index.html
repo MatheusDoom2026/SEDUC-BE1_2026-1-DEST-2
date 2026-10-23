@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>crudFy - Streaming de Música</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        spotify: {
+                            green: '#1DB954',
+                            hover: '#1ed760',
+                            black: '#000000',
+                            dark: '#121212',
+                            card: '#181818',
+                            cardHover: '#282828',
+                            border: '#282828',
+                            subtext: '#a7a7a7'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- React 18 & Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #000000;
+            color: #ffffff;
+            user-select: none;
+        }
+        .spotify-hero-gradient {
+            background: linear-gradient(180deg, #1e3a29 0%, #121212 100%);
+        }
+        .glass-modal {
+            background: rgba(18, 18, 18, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Efeito de equalizador animado */
+        .eq-bar {
+            animation: eq 1s ease-in-out infinite alternate;
+        }
+        .eq-bar:nth-child(1) { animation-delay: 0.1s; }
+        .eq-bar:nth-child(2) { animation-delay: 0.3s; }
+        .eq-bar:nth-child(3) { animation-delay: 0.2s; }
+        @keyframes eq {
+            0% { height: 20%; }
+            100% { height: 100%; }
+        }
+    </style>
+</head>
+<body class="bg-black text-white selection:bg-spotify-green selection:text-black min-h-screen">
+
+<div id="root"></div>
+
+<script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+    const CAPAS_PRESET = [
+        "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&q=80&w=800",
+        "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=800",
+        "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&q=80&w=800",
+        "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=800"
+    ];
+
+    // Enum com as opções exatas aceitas pela classe com.senai.music.entity.Genero do Spring
+    const GENEROS_ENUM = [
+        { valor: "POP", rotulo: "Pop" },
+        { valor: "ROCK", rotulo: "Rock" },
+        { valor: "SERTANEJO", rotulo: "Sertanejo" },
+        { valor: "FUNK", rotulo: "Funk" },
+        { valor: "MPB", rotulo: "MPB" },
+        { valor: "ELETRONICA", rotulo: "Eletrônica" },
+        { valor: "HIP_HOP", rotulo: "Hip Hop" },
+        { valor: "RAP", rotulo: "Rap" },
+        { valor: "INDIE", rotulo: "Indie" },
+        { valor: "REB", rotulo: "R&B" },
+        { valor: "REGGAE", rotulo: "Reggae" },
+        { valor: "JAZZ", rotulo: "Jazz" },
+        { valor: "BLUES", rotulo: "Blues" },
+        { valor: "SAMBA", rotulo: "Samba" },
+        { valor: "PAGODE", rotulo: "Pagode" }
+    ];
+
+    // Componentes de Ícones SVG Nativos (Qualidade Profissional)
+    const Icons = {
+        Logo: () => (
+            <svg className="w-8 h-8 text-spotify-green fill-current" viewBox="0 0 24 24">
+                <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.35-1.434-5.308-1.758-8.793-.963-.335.077-.67-.133-.746-.467-.077-.334.132-.67.467-.745 3.812-.87 7.076-.496 9.722 1.123.293.18.386.563.207.845zm1.226-2.723c-.226.367-.706.482-1.073.257-2.687-1.652-6.785-2.131-9.965-1.166-.413.125-.848-.106-.973-.519-.125-.413.106-.848.519-.973 3.632-1.102 8.147-.568 11.234 1.328.368.226.483.707.258 1.073zm.145-2.837C14.744 8.91 8.35 8.7 4.85 9.761c-.512.155-1.047-.138-1.202-.65-.155-.512.138-1.047.65-1.202 4.053-1.23 11.11-1.002 14.82 1.2 0.463.275.614.877.34 1.34-.276.463-.878.614-1.341.341z"/>
+            </svg>
+        ),
+        Home: ({ className = "w-5 h-5" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+            </svg>
+        ),
+        Search: ({ className = "w-5 h-5" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+        ),
+        Library: ({ className = "w-5 h-5" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+            </svg>
+        ),
+        Plus: ({ className = "w-5 h-5" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+            </svg>
+        ),
+        Play: ({ className = "w-5 h-5" }) => (
+            <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z"/>
+            </svg>
+        ),
+        Pause: ({ className = "w-5 h-5" }) => (
+            <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+            </svg>
+        ),
+        Edit: ({ className = "w-4 h-4" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/>
+            </svg>
+        ),
+        Trash: ({ className = "w-4 h-4" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/>
+            </svg>
+        ),
+        Clock: ({ className = "w-4 h-4" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+        ),
+        Heart: ({ className = "w-5 h-5", filled = false }) => (
+            <svg className={className} fill={filled ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.514-4.688-4.514-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.736 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/>
+            </svg>
+        ),
+        User: ({ className = "w-5 h-5" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+            </svg>
+        ),
+        Close: ({ className = "w-5 h-5" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        )
+    };
+
+    function App() {
+        // Telas: 'login' | 'principal' | 'cadastro'
+        const [tela, setTela] = useState('login');
+        const [apiUrl, setApiUrl] = useState('http://localhost:8080/musicas');
+        const [statusApi, setStatusApi] = useState('carregando'); // 'conectado' | 'erro' | 'carregando'
+        const [erroDetalhe, setErroDetalhe] = useState('');
+        const [modalConfigApi, setModalConfigApi] = useState(false);
+
+        // Estados da Aplicação
+        const [usuario, setUsuario] = useState('Ouvinte');
+        const [musicas, setMusicas] = useState([]);
+        const [musicaTocando, setMusicaTocando] = useState(null);
+        const [isPlaying, setIsPlaying] = useState(false);
+        const [termoBusca, setTermoBusca] = useState('');
+
+        // Modais
+        const [editandoMusica, setEditandoMusica] = useState(null);
+        const [deletandoId, setDeletandoId] = useState(null);
+        const [toast, setToast] = useState(null);
+
+        // Notificação Limpa
+        const avisar = (mensagem, tipo = 'info') => {
+            setToast({ mensagem, tipo, id: Date.now() });
+            setTimeout(() => setToast(null), 3500);
+        };
+
+        // Carregar Lista de Músicas (GET /musicas)
+        const carregarMusicas = async () => {
+            setStatusApi('carregando');
+            setErroDetalhe('');
+
+            try {
+                const res = await fetch(apiUrl);
+                if (!res.ok) {
+                    throw new Error(`Servidor respondeu com status ${res.status}`);
+                }
+                const dados = await res.json();
+                const lista = Array.isArray(dados) ? dados : [];
+                setMusicas(lista);
+                setStatusApi('conectado');
+                if (lista.length > 0 && !musicaTocando) setMusicaTocando(lista[0]);
+            } catch (err) {
+                setStatusApi('erro');
+                setErroDetalhe(err.message || 'Não foi possível conectar ao servidor backend.');
+            }
+        };
+
+        useEffect(() => {
+            carregarMusicas();
+        }, [apiUrl]);
+
+        // Adicionar Música (POST /musicas)
+        const handleCadastrar = async (novaMusica) => {
+            try {
+                const res = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(novaMusica)
+                });
+
+                if (res.ok || res.status === 201) {
+                    avisar('Música adicionada à API com sucesso!', 'sucesso');
+                    await carregarMusicas();
+                    setTela('principal');
+                } else {
+                    avisar(`Erro no POST (${res.status}): Verifique sua API`, 'erro');
+                }
+            } catch (err) {
+                avisar('Erro de conexão ao enviar POST para a API', 'erro');
+            }
+        };
+
+        // Atualizar Música (PUT /musicas/:id)
+        const handleAtualizar = async (id, dadosAtualizados) => {
+            try {
+                const res = await fetch(`${apiUrl}/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dadosAtualizados)
+                });
+
+                if (res.ok) {
+                    avisar('Música atualizada via PUT!', 'sucesso');
+                    if (musicaTocando?.id === id) setMusicaTocando({ ...musicaTocando, ...dadosAtualizados });
+                    await carregarMusicas();
+                    setEditandoMusica(null);
+                } else {
+                    avisar(`Erro no PUT (${res.status})`, 'erro');
+                }
+            } catch (err) {
+                avisar('Erro de conexão ao enviar PUT para a API', 'erro');
+            }
+        };
+
+        // Remover Música (DELETE /musicas/:id)
+        const handleDeletar = async (id) => {
+            if (!id) {
+                avisar('Não é possível excluir: esta música não possui ID retornado pela API!', 'erro');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${apiUrl}/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (res.ok || res.status === 204) {
+                    avisar('Música removida via DELETE!', 'sucesso');
+                    setDeletandoId(null);
+                    await carregarMusicas();
+                } else {
+                    avisar(`Erro no DELETE (${res.status})`, 'erro');
+                }
+            } catch (err) {
+                avisar('Erro de conexão ao enviar DELETE para a API', 'erro');
+            }
+        };
+
+        // Filtro de Músicas por Busca
+        const musicasFiltradas = useMemo(() => {
+            if (!termoBusca.trim()) return musicas;
+            const t = termoBusca.toLowerCase();
+            return musicas.filter(m =>
+                (m.titulo && m.titulo.toLowerCase().includes(t)) ||
+                (m.artista && m.artista.toLowerCase().includes(t)) ||
+                (m.album && m.album.toLowerCase().includes(t))
+            );
+        }, [musicas, termoBusca]);
+
+        return (
+            <div className="flex h-screen overflow-hidden bg-black text-white font-sans">
+
+                {/* TOAST / NOTIFICAÇÃO DISCRETA */}
+                {toast && (
+                    <div className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-lg text-xs font-semibold shadow-2xl border flex items-center gap-3 transition-all ${
+                        toast.tipo === 'sucesso'
+                            ? 'bg-neutral-900 text-spotify-green border-spotify-green/40'
+                            : toast.tipo === 'erro'
+                                ? 'bg-neutral-900 text-rose-500 border-rose-500/40'
+                                : 'bg-neutral-900 text-white border-neutral-700'
+                    }`}>
+                        <div className={`w-2 h-2 rounded-full ${toast.tipo === 'sucesso' ? 'bg-spotify-green' : toast.tipo === 'erro' ? 'bg-rose-500' : 'bg-white'}`} />
+                        <span>{toast.mensagem}</span>
+                    </div>
+                )}
+
+                {/* ========================================================
+              TELA 1: LOGIN (Landing Page Elegante)
+             ======================================================== */}
+                {tela === 'login' && (
+                    <div className="w-full h-full flex flex-col items-center justify-center relative bg-gradient-to-b from-neutral-900 to-black p-6">
+                        <div className="max-w-md w-full bg-spotify-card border border-spotify-border p-8 rounded-2xl shadow-2xl text-center space-y-6">
+
+                            <div className="flex justify-center items-center gap-3">
+                                <Icons.Logo />
+                                <span className="text-3xl font-black tracking-tight">crud<span className="text-spotify-green">Fy</span></span>
+                            </div>
+
+                            <div>
+                                <h1 className="text-2xl font-extrabold text-white">Música para todos</h1>
+                                <p className="text-xs text-spotify-subtext mt-1">Conecte-se para ouvir e gerenciar suas faixas preferidas.</p>
+                            </div>
+
+                            {/* Status de Conexão com a API */}
+                            <div className="bg-neutral-900 p-3 rounded-xl border border-neutral-800 flex items-center justify-between text-left text-xs">
+                                <div>
+                                    <span className="text-spotify-subtext block text-[10px] uppercase font-bold">API Backend</span>
+                                    <span className="font-mono text-white truncate max-w-[200px] block">{apiUrl}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className={`w-2.5 h-2.5 rounded-full ${statusApi === 'conectado' ? 'bg-spotify-green animate-pulse' : statusApi === 'carregando' ? 'bg-amber-400' : 'bg-rose-500'}`} />
+                                    <button
+                                        onClick={() => setModalConfigApi(true)}
+                                        className="text-[10px] bg-neutral-800 hover:bg-neutral-700 text-spotify-subtext hover:text-white px-2 py-1 rounded transition"
+                                    >
+                                        Alterar
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 text-left pt-2">
+                                <div>
+                                    <label className="text-xs font-bold text-spotify-subtext block mb-1.5 uppercase tracking-wider">Nome de Usuário</label>
+                                    <input
+                                        type="text"
+                                        defaultValue={usuario}
+                                        onChange={(e) => setUsuario(e.target.value)}
+                                        placeholder="Ex: Gabriel Silva"
+                                        className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-spotify-green transition"
+                                    />
+                                </div>
+
+                                <button
+                                    onClick={() => {
+                                        setUsuario(usuario || 'Ouvinte');
+                                        setTela('principal');
+                                        avisar(`Bem-vindo, ${usuario || 'Ouvinte'}`);
+                                    }}
+                                    className="w-full py-3.5 bg-spotify-green hover:bg-spotify-hover text-black font-extrabold rounded-full transition text-sm tracking-wide shadow-lg shadow-spotify-green/20"
+                                >
+                                    Entrar no App
+                                </button>
+                            </div>
+
+                            <div className="pt-4 border-t border-neutral-800">
+                                <p className="text-xs text-spotify-subtext">Deseja cadastrar uma nova faixa diretamente?</p>
+                                <button
+                                    onClick={() => setTela('cadastro')}
+                                    className="text-xs text-spotify-green font-bold hover:underline mt-1 block mx-auto"
+                                >
+                                    + Criar nova música
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+                )}
+
+                {/* ========================================================
+              APLICAÇÃO PRINCIPAL (LAYOUT SPOTIFY DESKTOP)
+             ======================================================== */}
+                {tela !== 'login' && (
+                    <div className="flex flex-col w-full h-full">
+
+                        <div className="flex flex-1 overflow-hidden">
+
+                            {/* BARRA LATERAL (SIDEBAR) */}
+                            <aside className="w-64 bg-black p-4 flex flex-col justify-between hidden md:flex border-r border-neutral-900">
+                                <div className="space-y-6">
+                                    {/* Logo */}
+                                    <div className="flex items-center gap-2.5 px-2 cursor-pointer" onClick={() => setTela('principal')}>
+                                        <Icons.Logo />
+                                        <span className="text-xl font-extrabold tracking-tight">crud<span className="text-spotify-green">Fy</span></span>
+                                    </div>
+
+                                    {/* Navegação Principal */}
+                                    <nav className="space-y-1">
+                                        <button
+                                            onClick={() => setTela('principal')}
+                                            className={`w-full flex items-center gap-4 px-3 py-2.5 rounded-lg text-sm font-bold transition ${
+                                                tela === 'principal' ? 'bg-neutral-800 text-white' : 'text-spotify-subtext hover:text-white'
+                                            }`}
+                                        >
+                                            <Icons.Home />
+                                            <span>Início</span>
+                                        </button>
+
+                                        <button
+                                            onClick={() => setTela('principal')}
+                                            className="w-full flex items-center gap-4 px-3 py-2.5 rounded-lg text-sm font-bold text-spotify-subtext hover:text-white transition"
+                                        >
+                                            <Icons.Search />
+                                            <span>Buscar</span>
+                                        </button>
+
+                                        <button
+                                            onClick={() => setTela('principal')}
+                                            className="w-full flex items-center gap-4 px-3 py-2.5 rounded-lg text-sm font-bold text-spotify-subtext hover:text-white transition"
+                                        >
+                                            <Icons.Library />
+                                            <span>Sua Biblioteca</span>
+                                        </button>
+                                    </nav>
+
+                                    {/* Ação de Adicionar */}
+                                    <div className="pt-4 border-t border-neutral-900 space-y-3">
+                                        <button
+                                            onClick={() => setTela('cadastro')}
+                                            className="w-full flex items-center gap-3 px-3 py-2.5 bg-neutral-900 hover:bg-neutral-800 rounded-lg text-xs font-bold text-white transition border border-neutral-800"
+                                        >
+                                            <div className="w-6 h-6 rounded bg-white text-black flex items-center justify-center">
+                                                <Icons.Plus className="w-4 h-4" />
+                                            </div>
+                                            <span>Criar Música</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Status da API & Usuário no Rodapé */}
+                                <div className="space-y-2">
+                                    <button
+                                        onClick={() => setModalConfigApi(true)}
+                                        className="w-full p-2.5 bg-neutral-900/80 hover:bg-neutral-800 rounded-xl border border-neutral-800 flex items-center justify-between text-left transition"
+                                    >
+                                        <div className="min-w-0">
+                                            <div className="text-[10px] text-spotify-subtext font-bold uppercase">Endpoint Ativo</div>
+                                            <div className="text-xs font-mono text-white truncate">{apiUrl}</div>
+                                        </div>
+                                        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${statusApi === 'conectado' ? 'bg-spotify-green' : 'bg-rose-500'}`} />
+                                    </button>
+
+                                    <div className="p-3 bg-neutral-900/60 rounded-xl border border-neutral-800 flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-spotify-green text-black flex items-center justify-center font-bold text-xs">
+                                            {usuario.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className="truncate flex-1">
+                                            <div className="text-xs font-bold text-white truncate">{usuario}</div>
+                                            <div className="text-[10px] text-spotify-subtext">Perfil Ativo</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </aside>
+
+                            {/* CONTEÚDO PRINCIPAL (MAIN VIEW) */}
+                            <main className="flex-1 bg-spotify-dark overflow-y-auto flex flex-col justify-between">
+
+                                {/* CABEÇALHO SUPERIOR */}
+                                <header className="px-8 py-4 bg-black/40 backdrop-blur sticky top-0 z-30 flex items-center justify-between border-b border-neutral-900">
+                                    <div className="flex items-center gap-4 flex-1 max-w-md">
+                                        <div className="relative w-full">
+                                            <Icons.Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-spotify-subtext" />
+                                            <input
+                                                type="text"
+                                                placeholder="O que você quer ouvir ou buscar?"
+                                                value={termoBusca}
+                                                onChange={(e) => setTermoBusca(e.target.value)}
+                                                className="w-full bg-neutral-900 border border-neutral-800 rounded-full pl-9 pr-4 py-2 text-xs text-white placeholder-spotify-subtext focus:outline-none focus:border-neutral-600"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3">
+                                        {tela === 'principal' ? (
+                                            <button
+                                                onClick={() => setTela('cadastro')}
+                                                className="px-4 py-2 bg-spotify-green hover:bg-spotify-hover text-black text-xs font-extrabold rounded-full flex items-center gap-2 transition"
+                                            >
+                                                <Icons.Plus className="w-4 h-4" />
+                                                <span>Nova Faixa</span>
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={() => setTela('principal')}
+                                                className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-bold rounded-full transition"
+                                            >
+                                                Voltar à Biblioteca
+                                            </button>
+                                        )}
+                                    </div>
+                                </header>
+
+                                {/* BARRINHA DE ERRO DA API (SE O BACKEND ESTIVER FORA) */}
+                                {statusApi === 'erro' && (
+                                    <div className="m-8 p-5 bg-rose-950/40 border border-rose-500/40 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                                        <div className="space-y-1">
+                                            <div className="text-sm font-bold text-rose-400 flex items-center gap-2">
+                                                <span>⚠️ Erro de conexão com a API</span>
+                                                <span className="font-mono text-xs bg-rose-900/60 px-2 py-0.5 rounded text-rose-200">{apiUrl}</span>
+                                            </div>
+                                            <p className="text-xs text-neutral-300">
+                                                {erroDetalhe}
+                                            </p>
+                                            <p className="text-[11px] text-neutral-400 pt-1">
+                                                💡 <strong>Dica para a aula:</strong> Verifique se o servidor backend Node/Express está rodando na porta 3000 e se possui o middleware <code>cors()</code> configurado.
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={carregarMusicas}
+                                            className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-full text-xs transition flex-shrink-0"
+                                        >
+                                            Tentar Novamente (GET)
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* ========================================================
+                      TELA 2: FORMULÁRIO DE CADASTRO (CRIAR MÚSICA)
+                     ======================================================== */}
+                                {tela === 'cadastro' && (
+                                    <div className="p-8 max-w-2xl mx-auto w-full my-auto">
+                                        <div className="bg-spotify-card border border-spotify-border p-8 rounded-2xl shadow-2xl space-y-6">
+                                            <div>
+                                                <h2 className="text-2xl font-extrabold text-white">Adicionar Nova Música</h2>
+                                                <p className="text-xs text-spotify-subtext mt-1">Preencha os detalhes para cadastrar a faixa via <code className="text-spotify-green">POST {apiUrl}</code></p>
+                                            </div>
+
+                                            <FormCadastroMusica onEnviar={handleCadastrar} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* ========================================================
+                      TELA 3: PRINCIPAL (BIBLIOTECA & LISTA DE MÚSICAS)
+                     ======================================================== */}
+                                {tela === 'principal' && (
+                                    <div className="flex-1 p-8 space-y-6">
+
+                                        {/* HERO BANNER DA PLAYLIST */}
+                                        <div className="p-6 rounded-2xl spotify-hero-gradient border border-neutral-800/80 flex flex-col md:flex-row items-start md:items-end gap-6 shadow-2xl">
+                                            <div className="w-36 h-36 rounded-xl overflow-hidden bg-neutral-800 shadow-2xl flex-shrink-0 border border-white/10">
+                                                <img
+                                                    src={musicaTocando?.capa || CAPAS_PRESET[0]}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <span className="text-[11px] font-bold uppercase tracking-widest text-spotify-green">Sua Biblioteca</span>
+                                                <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight">Minhas Faixas</h1>
+                                                <p className="text-xs text-spotify-subtext pt-1">
+                                                    {musicas.length} Músicas retornadas do backend (<code className="text-spotify-green">GET /musicas</code>)
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* TABELA DE MÚSICAS ESTILO SPOTIFY */}
+                                        <div className="space-y-2 pt-2">
+
+                                            {/* Cabeçalho da Tabela */}
+                                            <div className="grid grid-cols-12 px-4 py-2 text-[11px] font-bold text-spotify-subtext border-b border-neutral-800 uppercase tracking-wider">
+                                                <div className="col-span-1 text-center">#</div>
+                                                <div className="col-span-5 md:col-span-4">Título</div>
+                                                <div className="col-span-4 hidden md:block">Álbum</div>
+                                                <div className="col-span-3 md:col-span-2 text-right pr-4">Ações</div>
+                                            </div>
+
+                                            {/* Mapeamento das Músicas */}
+                                            {musicasFiltradas.length === 0 ? (
+                                                <div className="p-12 text-center bg-neutral-900/40 rounded-xl border border-neutral-800/60 space-y-3">
+                                                    <div className="w-12 h-12 mx-auto text-spotify-subtext flex items-center justify-center">
+                                                        <Icons.Library className="w-8 h-8" />
+                                                    </div>
+                                                    <p className="text-sm font-semibold text-spotify-subtext">
+                                                        {statusApi === 'erro' ? 'Incapaz de carregar catálogo. Verifique o backend.' : 'Nenhuma música cadastrada na API ainda.'}
+                                                    </p>
+                                                    <button
+                                                        onClick={() => setTela('cadastro')}
+                                                        className="text-xs text-spotify-green font-bold hover:underline block mx-auto"
+                                                    >
+                                                        Adicionar uma música agora (POST)
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                musicasFiltradas.map((m, index) => {
+                                                    const estaTocando = musicaTocando?.id === m.id;
+                                                    return (
+                                                        <div
+                                                            key={m.id || index}
+                                                            className={`grid grid-cols-12 items-center px-4 py-3 rounded-lg transition group ${
+                                                                estaTocando
+                                                                    ? 'bg-neutral-800/80 text-spotify-green'
+                                                                    : 'hover:bg-spotify-cardHover text-white'
+                                                            }`}
+                                                        >
+                                                            {/* Posição / Play */}
+                                                            <div
+                                                                className="col-span-1 text-center font-bold text-xs text-spotify-subtext flex items-center justify-center cursor-pointer"
+                                                                onClick={() => {
+                                                                    setMusicaTocando(m);
+                                                                    setIsPlaying(true);
+                                                                }}
+                                                            >
+                                                                {estaTocando && isPlaying ? (
+                                                                    <div className="flex items-end gap-0.5 h-3">
+                                                                        <span className="w-1 bg-spotify-green eq-bar"></span>
+                                                                        <span className="w-1 bg-spotify-green eq-bar"></span>
+                                                                        <span className="w-1 bg-spotify-green eq-bar"></span>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="group-hover:hidden">{index + 1}</span>
+                                                                )}
+                                                                <span className={`hidden ${estaTocando ? '' : 'group-hover:block'} text-white`}>
+                                    <Icons.Play className="w-4 h-4" />
+                                  </span>
+                                                            </div>
+
+                                                            {/* Capa + Título + Artista */}
+                                                            <div
+                                                                className="col-span-5 md:col-span-4 flex items-center gap-3 cursor-pointer min-w-0"
+                                                                onClick={() => {
+                                                                    setMusicaTocando(m);
+                                                                    setIsPlaying(true);
+                                                                }}
+                                                            >
+                                                                <img
+                                                                    src={m.capa || CAPAS_PRESET[0]}
+                                                                    className="w-10 h-10 rounded object-cover flex-shrink-0 bg-neutral-800"
+                                                                />
+                                                                <div className="truncate">
+                                                                    <div className={`text-sm font-bold truncate ${estaTocando ? 'text-spotify-green' : 'text-white'}`}>
+                                                                        {m.titulo}
+                                                                    </div>
+                                                                    <div className="text-xs text-spotify-subtext truncate">
+                                                                        {m.artista}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Álbum */}
+                                                            <div className="col-span-4 hidden md:block text-xs text-spotify-subtext truncate">
+                                                                {m.album || 'Single'}
+                                                            </div>
+
+                                                            {/* Ações do Registro (Editar & Excluir) */}
+                                                            <div className="col-span-6 md:col-span-3 flex items-center justify-end gap-2 pr-2">
+                                                                {!m.id && (
+                                                                    <span className="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded border border-amber-500/30">
+                                      Sem ID
+                                    </span>
+                                                                )}
+                                                                <button
+                                                                    onClick={() => setEditandoMusica(m)}
+                                                                    disabled={!m.id}
+                                                                    className={`p-2 text-spotify-subtext hover:text-white hover:bg-neutral-800 rounded-md transition ${!m.id ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                                                    title={m.id ? "Editar Música (PUT)" : "Registro sem ID retornado da API"}
+                                                                >
+                                                                    <Icons.Edit />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => setDeletandoId(m.id)}
+                                                                    disabled={!m.id}
+                                                                    className={`p-2 text-spotify-subtext hover:text-rose-400 hover:bg-neutral-800 rounded-md transition ${!m.id ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                                                    title={m.id ? "Excluir Música (DELETE)" : "Registro sem ID retornado da API"}
+                                                                >
+                                                                    <Icons.Trash />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
+                                        </div>
+
+                                    </div>
+                                )}
+
+                            </main>
+                        </div>
+
+                        {/* ========================================================
+                  PLAYER FIXO NO RODAPÉ (ESTILO SPOTIFY PLAYER)
+                 ======================================================== */}
+                        {musicaTocando && (
+                            <footer className="h-20 bg-black border-t border-neutral-900 px-6 flex items-center justify-between z-40 select-none">
+
+                                {/* Faixa Atual */}
+                                <div className="flex items-center gap-3 w-1/4 min-w-0">
+                                    <img
+                                        src={musicaTocando.capa || CAPAS_PRESET[0]}
+                                        className="w-12 h-12 rounded object-cover flex-shrink-0 border border-neutral-800"
+                                    />
+                                    <div className="truncate">
+                                        <div className="text-xs font-bold text-white truncate hover:underline cursor-pointer">
+                                            {musicaTocando.titulo}
+                                        </div>
+                                        <div className="text-[11px] text-spotify-subtext truncate hover:underline cursor-pointer">
+                                            {musicaTocando.artista}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Controles do Player */}
+                                <div className="flex flex-col items-center gap-1.5 w-2/4 max-w-md">
+                                    <div className="flex items-center gap-4">
+                                        <button
+                                            onClick={() => setIsPlaying(!isPlaying)}
+                                            className="w-9 h-9 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition shadow-lg"
+                                        >
+                                            {isPlaying ? <Icons.Pause className="w-5 h-5" /> : <Icons.Play className="w-5 h-5 fill-current ml-0.5" />}
+                                        </button>
+                                    </div>
+
+                                    {/* Barra de Progresso Fictícia */}
+                                    <div className="w-full flex items-center gap-2 text-[10px] text-spotify-subtext font-mono">
+                                        <span>1:12</span>
+                                        <div className="flex-1 h-1 bg-neutral-800 rounded-full overflow-hidden">
+                                            <div className="w-1/3 h-full bg-spotify-green"></div>
+                                        </div>
+                                        <span>{musicaTocando.duracao || '3:30'}</span>
+                                    </div>
+                                </div>
+
+                                {/* Opções Secundárias */}
+                                <div className="w-1/4 flex justify-end items-center gap-3 text-spotify-subtext">
+                                    <Icons.Library className="w-4 h-4 cursor-pointer hover:text-white" />
+                                </div>
+
+                            </footer>
+                        )}
+
+                    </div>
+                )}
+
+                {/* MODAL PARA CONFIGURAR A URL DA API */}
+                {modalConfigApi && (
+                    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+                        <div className="glass-modal max-w-md w-full p-6 rounded-2xl relative space-y-4 border border-neutral-800 shadow-2xl">
+                            <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+                                <h3 className="font-extrabold text-white text-sm">Configurar URL do Backend</h3>
+                                <button onClick={() => setModalConfigApi(false)} className="text-spotify-subtext hover:text-white transition">
+                                    <Icons.Close />
+                                </button>
+                            </div>
+
+                            <div className="space-y-3 text-xs">
+                                <p className="text-spotify-subtext">
+                                    Informe a rota base onde sua API REST está rodando. O front-end fará chamadas <code>GET</code>, <code>POST</code>, <code>PUT</code> e <code>DELETE</code> neste endpoint.
+                                </p>
+
+                                <div>
+                                    <label className="block text-spotify-subtext font-bold mb-1 uppercase tracking-wider text-[10px]">URL da API</label>
+                                    <input
+                                        type="text"
+                                        value={apiUrl}
+                                        onChange={(e) => setApiUrl(e.target.value)}
+                                        placeholder="http://localhost:3000/musicas"
+                                        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg p-3 text-white font-mono focus:outline-none focus:border-spotify-green"
+                                    />
+                                </div>
+
+                                <div className="pt-2">
+                                    <button
+                                        onClick={() => {
+                                            setModalConfigApi(false);
+                                            carregarMusicas();
+                                        }}
+                                        className="w-full py-3 bg-spotify-green hover:bg-spotify-hover text-black font-extrabold rounded-full transition text-xs tracking-wide shadow-lg"
+                                    >
+                                        Salvar e Testar Conexão
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ========================================================
+              MODAL DE EDIÇÃO DE MÚSICA
+             ======================================================== */}
+                {editandoMusica && (
+                    <ModalEditarMusica
+                        musica={editandoMusica}
+                        onSalvar={handleAtualizar}
+                        onFechar={() => setEditandoMusica(null)}
+                    />
+                )}
+
+                {/* ========================================================
+              MODAL DE CONFIRMAÇÃO DE EXCLUSÃO
+             ======================================================== */}
+                {deletandoId && (
+                    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+                        <div className="glass-modal max-w-sm w-full p-6 rounded-2xl text-center space-y-5 border border-neutral-800 shadow-2xl">
+                            <div className="w-12 h-12 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center mx-auto">
+                                <Icons.Trash className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h3 className="font-extrabold text-white text-base">Excluir Faixa?</h3>
+                                <p className="text-xs text-spotify-subtext mt-1.5 leading-relaxed">
+                                    Esta ação enviará uma requisição <code className="text-rose-400">DELETE {apiUrl}/{deletandoId}</code> para o backend.
+                                </p>
+                            </div>
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    onClick={() => setDeletandoId(null)}
+                                    className="flex-1 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-full text-xs font-bold transition"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={() => handleDeletar(deletandoId)}
+                                    className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-xs font-bold transition shadow-lg shadow-rose-600/20"
+                                >
+                                    Excluir
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+            </div>
+        );
+    }
+
+    // --- COMPONENTE: FORMULÁRIO DE CADASTRO ---
+    function FormCadastroMusica({ onEnviar }) {
+        const [form, setForm] = useState({
+            titulo: '',
+            artista: '',
+            album: '',
+            genero: 'POP',
+            duracao: '3:30',
+            capa: CAPAS_PRESET[0]
+        });
+
+        const handleSubmit = (e) => {
+            e.preventDefault();
+            onEnviar(form);
+        };
+
+        return (
+            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+
+                {/* Seletor de Capa */}
+                <div>
+                    <label className="block text-spotify-subtext font-bold mb-2 uppercase tracking-wider text-[10px]">Capa do Álbum</label>
+                    <div className="flex gap-3 overflow-x-auto pb-2">
+                        {CAPAS_PRESET.map((url, idx) => (
+                            <img
+                                key={idx}
+                                src={url}
+                                onClick={() => setForm({ ...form, capa: url })}
+                                className={`w-14 h-14 rounded-lg object-cover cursor-pointer border-2 transition ${
+                                    form.capa === url ? 'border-spotify-green scale-105 shadow-lg' : 'border-transparent opacity-50 hover:opacity-100'
+                                }`}
+                            />
+                        ))}
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-spotify-subtext font-bold mb-1.5 uppercase tracking-wider text-[10px]">Título da Música</label>
+                    <input
+                        type="text"
+                        required
+                        placeholder="Ex: Midnight City"
+                        value={form.titulo}
+                        onChange={(e) => setForm({ ...form, titulo: e.target.value })}
+                        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg p-3 text-white focus:outline-none focus:border-spotify-green transition"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-spotify-subtext font-bold mb-1.5 uppercase tracking-wider text-[10px]">Artista ou Banda</label>
+                    <input
+                        type="text"
+                        required
+                        placeholder="Ex: M83"
+                        value={form.artista}
+                        onChange={(e) => setForm({ ...form, artista: e.target.value })}
+                        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg p-3 text-white focus:outline-none focus:border-spotify-green transition"
+                    />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <div>
+                        <label className="block text-spotify-subtext font-bold mb-1.5 uppercase tracking-wider text-[10px]">Álbum</label>
+                        <input
+                            type="text"
+                            required
+                            placeholder="Ex: Hurry Up, We're Dreaming"
+                            value={form.album}
+                            onChange={(e) => setForm({ ...form, album: e.target.value })}
+                            className="w-full bg-neutral-900 border border-neutral-800 rounded-lg p-3 text-white focus:outline-none focus:border-spotify-green transition"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-spotify-subtext font-bold mb-1.5 uppercase tracking-wider text-[10px]">Gênero</label>
+                        <select
+                            required
+                            value={form.genero}
+                            onChange={(e) => setForm({ ...form, genero: e.target.value })}
+                            className="w-full bg-neutral-900 border border-neutral-800 rounded-lg p-3 text-white focus:outline-none focus:border-spotify-green transition cursor-pointer"
+                        >
+                            {GENEROS_ENUM.map((g) => (
+                                <option key={g.valor} value={g.valor} className="bg-neutral-900 text-white">
+                                    {g.rotulo}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                <button
+                    type="submit"
+                    className="w-full py-3.5 bg-spotify-green hover:bg-spotify-hover text-black font-extrabold rounded-full transition mt-6 text-sm tracking-wide shadow-lg shadow-spotify-green/20"
+                >
+                    Salvar Música
+                </button>
+            </form>
+        );
+    }
+
+    // --- COMPONENTE: MODAL DE EDIÇÃO ---
+    function ModalEditarMusica({ musica, onSalvar, onFechar }) {
+        const [form, setForm] = useState({
+            titulo: musica.titulo || '',
+            artista: musica.artista || '',
+            album: musica.album || '',
+            genero: musica.genero || 'POP',
+            capa: musica.capa || ''
+        });
+
+        return (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+                <div className="glass-modal max-w-md w-full p-6 rounded-2xl relative space-y-5 border border-neutral-800 shadow-2xl">
+                    <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+                        <h3 className="font-extrabold text-white text-sm">Editar Informações</h3>
+                        <button onClick={onFechar} className="text-spotify-subtext hover:text-white transition">
+                            <Icons.Close />
+                        </button>
+                    </div>
+
+                    <form onSubmit={(e) => { e.preventDefault(); onSalvar(musica.id, form); }} className="space-y-4 text-xs">
+                        <div>
+                            <label className="block text-spotify-subtext font-bold mb-1 uppercase tracking-wider text-[10px]">Título</label>
+                            <input
+                                type="text"
+                                value={form.titulo}
+                                onChange={(e) => setForm({ ...form, titulo: e.target.value })}
+                                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-spotify-green"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-spotify-subtext font-bold mb-1 uppercase tracking-wider text-[10px]">Artista</label>
+                            <input
+                                type="text"
+                                value={form.artista}
+                                onChange={(e) => setForm({ ...form, artista: e.target.value })}
+                                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-spotify-green"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-spotify-subtext font-bold mb-1 uppercase tracking-wider text-[10px]">Álbum</label>
+                                <input
+                                    type="text"
+                                    value={form.album}
+                                    onChange={(e) => setForm({ ...form, album: e.target.value })}
+                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-spotify-green"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-spotify-subtext font-bold mb-1 uppercase tracking-wider text-[10px]">Gênero</label>
+                                <select
+                                    required
+                                    value={form.genero}
+                                    onChange={(e) => setForm({ ...form, genero: e.target.value })}
+                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-spotify-green cursor-pointer"
+                                >
+                                    {GENEROS_ENUM.map((g) => (
+                                        <option key={g.valor} value={g.valor} className="bg-neutral-900 text-white">
+                                            {g.rotulo}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="pt-3">
+                            <button
+                                type="submit"
+                                className="w-full py-3 bg-spotify-green hover:bg-spotify-hover text-black font-extrabold rounded-full transition text-xs tracking-wide shadow-lg"
+                            >
+                                Salvar Alterações
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
