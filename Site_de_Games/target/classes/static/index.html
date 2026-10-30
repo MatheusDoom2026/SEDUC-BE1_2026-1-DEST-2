@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xbox Store - Gerenciador de Jogos</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --xbox-black: #0e0e0e;
+            --xbox-dark-gray: #171717;
+            --xbox-card-bg: #202020;
+            --xbox-input-bg: #121212;
+            --xbox-green: #107c41;
+            --xbox-green-light: #13a153;
+            --xbox-green-neon: #9bf00b;
+            --xbox-border: #2d2d2d;
+        }
+
+        body {
+            background-color: var(--xbox-black);
+            color: #f2f2f2;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .xbox-navbar {
+            background-color: var(--xbox-dark-gray);
+            border-bottom: 3px solid var(--xbox-green);
+        }
+
+        .xbox-logo {
+            color: var(--xbox-green-light);
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+
+        .card {
+            background-color: var(--xbox-card-bg);
+            border: 1px solid var(--xbox-border);
+            border-radius: 8px;
+            color: #ffffff;
+        }
+
+        .card-header {
+            background-color: #282828;
+            border-bottom: 1px solid var(--xbox-border);
+            color: #ffffff;
+            font-weight: 700;
+        }
+
+        .form-control, .form-select {
+            background-color: var(--xbox-input-bg);
+            border: 1px solid var(--xbox-border);
+            color: #ffffff;
+            border-radius: 4px;
+        }
+
+        .form-control:focus, .form-select:focus {
+            background-color: #1a1a1a;
+            color: #ffffff;
+            border-color: var(--xbox-green-light);
+            box-shadow: 0 0 0 0.25rem rgba(16, 124, 65, 0.4);
+        }
+
+        .btn-xbox {
+            background-color: var(--xbox-green);
+            border: none;
+            color: #ffffff;
+            font-weight: 700;
+            border-radius: 4px;
+        }
+
+        .btn-xbox:hover {
+            background-color: var(--xbox-green-light);
+            color: #ffffff;
+        }
+
+        .btn-xbox-outline {
+            background-color: transparent;
+            border: 1px solid var(--xbox-green-light);
+            color: var(--xbox-green-light);
+            font-weight: 600;
+        }
+
+        .btn-xbox-outline:hover {
+            background-color: var(--xbox-green);
+            color: #ffffff;
+        }
+
+        .table-xbox {
+            --bs-table-bg: var(--xbox-card-bg);
+            --bs-table-border-color: var(--xbox-border);
+            color: #f2f2f2;
+        }
+
+        .badge-xbox {
+            background-color: #102a1b;
+            color: var(--xbox-green-neon);
+            border: 1px solid var(--xbox-green);
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg xbox-navbar mb-4 py-3">
+    <div class="container">
+        <a class="navbar-brand d-flex align-items-center gap-2 text-white" href="#">
+            <i class="fa-brands fa-xbox fs-1 text-success"></i>
+            <span class="fs-4 xbox-logo">XBOX <small class="fs-6 text-light fw-normal">| CATALOGO DE JOGOS</small></span>
+        </a>
+    </div>
+</nav>
+
+<div class="container pb-5">
+    <div id="alertContainer"></div>
+
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="card shadow">
+                <div class="card-header d-flex justify-content-between align-items-center py-3">
+                    <span><i class="fa-solid fa-square-plus me-2 text-success"></i>Cadastrar Jogo</span>
+                    <button type="button" class="btn btn-sm btn-xbox-outline" onclick="preencherHollowKnight()">
+                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Preencher Hollow Knight
+                    </button>
+                </div>
+                <div class="card-body">
+                    <form id="formJogo">
+                        <div class="mb-3">
+                            <label for="titulo" class="form-label text-light">Título do Jogo *</label>
+                            <input type="text" class="form-control" id="titulo" required placeholder="Ex: Hollow Knight">
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="genero" class="form-label text-light">Gênero *</label>
+                                <select class="form-select" id="genero" required>
+                                    <option value="" disabled selected>Selecione</option>
+                                    <option value="ACAO">Ação</option>
+                                    <option value="AVENTURA">Aventura</option>
+                                    <option value="RPG">RPG</option>
+                                    <option value="ESTRATEGIA">Estratégia</option>
+                                    <option value="ESPORTE">Esporte</option>
+                                    <option value="CORRIDA">Corrida</option>
+                                    <option value="TERROR">Terror</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="desenvolvedora" class="form-label text-light">Desenvolvedora</label>
+                                <input type="text" class="form-control" id="desenvolvedora" placeholder="Ex: Team Cherry">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="classificacaoIndicativa" class="form-label text-light">Classificação</label>
+                                <select class="form-select" id="classificacaoIndicativa">
+                                    <option value="" selected>Nenhuma</option>
+                                    <option value="LIVRE">Livre</option>
+                                    <option value="DEZ">10 Anos</option>
+                                    <option value="DOZE">12 Anos</option>
+                                    <option value="DEZESSEIS">16 Anos</option>
+                                    <option value="DEZOITO">18 Anos</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="dataLancamento" class="form-label text-light">Data Lançamento</label>
+                                <input type="date" class="form-control" id="dataLancamento">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="preco" class="form-label text-light">Preço (R$)</label>
+                                <input type="number" step="0.01" class="form-control" id="preco" placeholder="46.99">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="plataforma" class="form-label text-light">Plataforma</label>
+                                <input type="text" class="form-control" id="plataforma" placeholder="Ex: Xbox Series X|S">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="avaliacao" class="form-label text-light">Avaliação</label>
+                                <select class="form-select" id="avaliacao">
+                                    <option value="" selected>Nenhuma</option>
+                                    <option value="PESSIMO">Péssimo</option>
+                                    <option value="REGULAR">Regular</option>
+                                    <option value="BOM">Bom</option>
+                                    <option value="OTIMO">Ótimo</option>
+                                    <option value="EXCELENTE">Excelente</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3 align-self-end">
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="multiplayer">
+                                    <label class="form-check-label text-light" for="multiplayer">Multiplayer</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="descricao" class="form-label text-light">Descrição</label>
+                            <textarea class="form-control" id="descricao" rows="3" placeholder="Descrição do jogo..."></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-xbox w-100 py-2 fs-6">
+                            <i class="fa-solid fa-floppy-disk me-2"></i>Salvar Jogo na Biblioteca
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card shadow">
+                <div class="card-header d-flex justify-content-between align-items-center py-3">
+                    <span><i class="fa-solid fa-list me-2 text-success"></i>Biblioteca de Jogos Cadastrados</span>
+                    <button class="btn btn-sm btn-outline-light" onclick="carregarJogos()">
+                        <i class="fa-solid fa-rotate-right me-1"></i>Atualizar
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="input-group mb-3">
+                        <input type="number" id="buscarIdInput" class="form-control" placeholder="Buscar por ID...">
+                        <button class="btn btn-xbox" type="button" onclick="buscarJogoPorId()">Buscar</button>
+                        <button class="btn btn-outline-secondary" type="button" onclick="carregarJogos()">Limpar</button>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-xbox align-middle">
+                            <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Título</th>
+                                <th>Gênero</th>
+                                <th>Plataforma</th>
+                                <th>Preço</th>
+                                <th>Avaliação</th>
+                            </tr>
+                            </thead>
+                            <tbody id="tabelaJogosBody">
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">Carregando catálogo...</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_URL = '/api/jogos';
+
+    document.addEventListener('DOMContentLoaded', carregarJogos);
+
+    function preencherHollowKnight() {
+        document.getElementById('titulo').value = "Hollow Knight";
+        document.getElementById('genero').value = "AVENTURA";
+        document.getElementById('desenvolvedora').value = "Team Cherry";
+        document.getElementById('classificacaoIndicativa').value = "DEZ";
+        document.getElementById('dataLancamento').value = "2017-02-24";
+        document.getElementById('preco').value = "46.99";
+        document.getElementById('plataforma').value = "Xbox Series X|S, PC";
+        document.getElementById('multiplayer').checked = false;
+        document.getElementById('avaliacao').value = "EXCELENTE";
+        document.getElementById('descricao').value = "Forje seu próprio caminho em Hollow Knight! Uma aventura épica em um reino arruinado de insetos.";
+    }
+
+    // Função auxiliar para evitar que strings vazias quebrem enums no backend
+    function obterValorOuNull(elementId) {
+        const el = document.getElementById(elementId);
+        return (el && el.value.trim() !== "") ? el.value : null;
+    }
+
+    async function carregarJogos() {
+        try {
+            const response = await fetch(API_URL);
+            if (!response.ok) throw new Error('Status HTTP: ' + response.status);
+            const jogos = await response.json();
+            renderizarTabela(jogos);
+        } catch (error) {
+            mostrarAlerta('Erro ao conectar à API Spring Boot: ' + error.message, 'danger');
+            document.getElementById('tabelaJogosBody').innerHTML =
+                '<tr><td colspan="6" class="text-center text-muted">Certifique-se que o backend Spring Boot está em execução na porta 8080.</td></tr>';
+        }
+    }
+
+    async function buscarJogoPorId() {
+        const id = document.getElementById('buscarIdInput').value;
+        if (!id) {
+            carregarJogos();
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/${id}`);
+            if (!response.ok) {
+                mostrarAlerta(`Jogo com ID #${id} não encontrado.`, 'warning');
+                return;
+            }
+            const jogo = await response.json();
+            renderizarTabela([jogo]);
+        } catch (error) {
+            mostrarAlerta('Erro ao buscar por ID: ' + error.message, 'danger');
+        }
+    }
+
+    document.getElementById('formJogo').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const novoJogo = {
+            titulo: document.getElementById('titulo').value,
+            genero: obterValorOuNull('genero'),
+            desenvolvedora: obterValorOuNull('desenvolvedora'),
+            classificacaoIndicativa: obterValorOuNull('classificacaoIndicativa'),
+            dataLancamento: obterValorOuNull('dataLancamento'),
+            preco: document.getElementById('preco').value ? parseFloat(document.getElementById('preco').value) : null,
+            plataforma: obterValorOuNull('plataforma'),
+            multiplayer: document.getElementById('multiplayer').checked,
+            avaliacao: obterValorOuNull('avaliacao'),
+            descricao: obterValorOuNull('descricao')
+        };
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(novoJogo)
+            });
+
+            if (response.ok) {
+                mostrarAlerta('Jogo cadastrado com sucesso!', 'success');
+                document.getElementById('formJogo').reset();
+                carregarJogos();
+            } else {
+                const errorText = await response.text();
+                mostrarAlerta('Erro ' + response.status + ' no servidor: ' + errorText, 'danger');
+            }
+        } catch (error) {
+            mostrarAlerta('Erro na comunicação com a API: ' + error.message, 'danger');
+        }
+    });
+
+    function renderizarTabela(jogos) {
+        const tbody = document.getElementById('tabelaJogosBody');
+        tbody.innerHTML = '';
+
+        if (jogos.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhum jogo cadastrado.</td></tr>';
+            return;
+        }
+
+        jogos.forEach(jogo => {
+            const precoFormatado = jogo.preco !== null && jogo.preco !== undefined ? `R$ ${jogo.preco.toFixed(2)}` : 'Gratuito';
+            const tr = document.createElement('tr');
+
+            tr.innerHTML = `
+                    <td><strong class="text-success">#${jogo.id}</strong></td>
+                    <td class="fw-bold text-white">${jogo.titulo}</td>
+                    <td><span class="badge badge-xbox">${jogo.genero || '-'}</span></td>
+                    <td><small class="text-muted">${jogo.plataforma || '-'}</small></td>
+                    <td class="text-light fw-bold">${precoFormatado}</td>
+                    <td><span class="badge bg-secondary">${jogo.avaliacao || '-'}</span></td>
+                `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function mostrarAlerta(mensagem, tipo) {
+        const alertContainer = document.getElementById('alertContainer');
+        alertContainer.innerHTML = `
+                <div class="alert alert-${tipo} alert-dismissible fade show" role="alert">
+                    ${mensagem}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+        setTimeout(() => {
+            const alert = document.querySelector('.alert');
+            if (alert) alert.remove();
+        }, 5000);
+    }
+</script>
+</body>
+</html>
